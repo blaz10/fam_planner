@@ -3,6 +3,7 @@ import 'package:fam_planner/models/household_member.dart';
 import 'package:fam_planner/models/shopping_item.dart';
 import 'package:fam_planner/models/task.dart';
 import 'package:fam_planner/services/database_service.dart';
+import 'package:fam_planner/services/task_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -29,8 +30,10 @@ Future<void> setupLocator() async {
     await databaseService.init();
     locator.registerSingleton<DatabaseService>(databaseService);
     
+    // Register services
+    locator.registerSingleton<TaskService>(TaskService());
+    
     // Register other services here as needed
-    // Example: locator.registerSingleton<AuthService>(AuthService());
   } catch (e) {
     print('Error in setupLocator: $e');
     rethrow;

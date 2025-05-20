@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_localizations.dart';
 import 'core/service_locator.dart';
-import 'features/home/home_screen.dart';
+import 'models/task.dart';
+import 'models/recurrence_rule.dart';
+import 'screens/main_screen.dart';
+import 'services/task_service.dart';
+
+final getIt = GetIt.instance;
 
 void main() async {
   print('=== APP STARTING ===');
@@ -19,8 +26,29 @@ void main() async {
   }
   
   try {
-    await Hive.initFlutter();
+    print('Initializing Hive and service locator...');
+    
+    // Initialize Hive with different paths for web and non-web
+    if (kIsWeb) {
+      // For web, we don't need a path
+      await Hive.initFlutter();
+    } else {
+      // For mobile/desktop, use path_provider
+      final appDocumentDir = await getApplicationDocumentsDirectory();
+      await Hive.initFlutter(appDocumentDir.path);
+    }
+    
+    // Register Hive adapters
+    Hive.registerAdapter(TaskAdapter());
+    Hive.registerAdapter(RecurrenceRuleAdapter());
+    Hive.registerAdapter(RecurrenceFrequencyAdapter());
+    
+    // Open the settings box
+    await Hive.openBox('settings');
+    
+    // Initialize service locator which will set up all services
     await setupLocator();
+    
     if (kDebugMode) {
       debugPrint('Hive and service locator initialized successfully');
     }
@@ -33,8 +61,11 @@ void main() async {
     
     print('Initialization complete, running app...');
     runApp(
-      ChangeNotifierProvider(
-        create: (_) => ThemeProvider(isDarkMode: isDarkMode),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode: isDarkMode)),
+          Provider<TaskService>(create: (_) => getIt<TaskService>()),
+        ],
         child: const MyApp(),
       ),
     );
@@ -126,7 +157,7 @@ class MyApp extends StatelessWidget {
             // If not supported, use the first one (Slovenian) as default
             return supportedLocales.first;
           },
-          home: const HomeScreen(),
+          home: const MainScreen(),
         );
       },
     );

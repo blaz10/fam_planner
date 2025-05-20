@@ -16,6 +16,19 @@ class DatabaseService {
   // Instance variable to track initialization
   bool _isInitialized = false;
   
+  // Get a box by name
+  Box<T> getBox<T>(String boxName) {
+    if (!_isInitialized) {
+      throw Exception('DatabaseService has not been initialized. Call init() first.');
+    }
+    
+    if (!Hive.isBoxOpen(boxName)) {
+      throw Exception('Box $boxName is not open. Make sure it was opened during initialization.');
+    }
+    
+    return Hive.box<T>(boxName);
+  }
+  
   // Initialize the database
   Future<void> init() async {
     if (_isInitialized) return;
