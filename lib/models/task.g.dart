@@ -6,6 +6,40 @@ part of 'task.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
+class HiveDurationAdapter extends TypeAdapter<HiveDuration> {
+  @override
+  final int typeId = 100;
+
+  @override
+  HiveDuration read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return HiveDuration(
+      fields[0] as int,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, HiveDuration obj) {
+    writer
+      ..writeByte(1)
+      ..writeByte(0)
+      ..write(obj.microseconds);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HiveDurationAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class TaskAdapter extends TypeAdapter<Task> {
   @override
   final int typeId = 2;
@@ -29,10 +63,10 @@ class TaskAdapter extends TypeAdapter<Task> {
       updatedAt: fields[9] as DateTime?,
       category: fields[10] as String,
       recurrenceRule: fields[11] as RecurrenceRule?,
-      attachmentPaths: (fields[12] as List?)?.cast<String>(),
-      notifyBefore: fields[13] as bool,
-      notificationInterval: fields[14] as Duration?,
-    );
+      attachmentPaths:
+          fields[12] == null ? [] : (fields[12] as List?)?.cast<String>(),
+      notifyBefore: fields[13] == null ? true : fields[13] as bool,
+    )..notificationIntervalMicros = fields[14] as int?;
   }
 
   @override
@@ -68,7 +102,7 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(13)
       ..write(obj.notifyBefore)
       ..writeByte(14)
-      ..write(obj.notificationInterval);
+      ..write(obj.notificationIntervalMicros);
   }
 
   @override
@@ -114,7 +148,8 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
           ? null
           : Duration(
               microseconds: (json['notificationInterval'] as num).toInt()),
-    );
+    )..notificationIntervalMicros =
+        (json['notificationIntervalMicros'] as num?)?.toInt();
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
       'id': instance.id,
@@ -131,5 +166,7 @@ Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
       'recurrenceRule': instance.recurrenceRule?.toJson(),
       'attachmentPaths': instance.attachmentPaths,
       'notifyBefore': instance.notifyBefore,
+      if (instance.notificationIntervalMicros case final value?)
+        'notificationIntervalMicros': value,
       'notificationInterval': instance.notificationInterval?.inMicroseconds,
     };

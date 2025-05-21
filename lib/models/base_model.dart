@@ -1,32 +1,24 @@
-import 'package:hive/hive.dart';
-
 abstract class BaseModel<T> {
   String get id;
+  
+  /// Converts the model to a JSON map
   Map<String, dynamic> toJson();
+  
+  /// Creates an instance of the model from a JSON map
   T fromJson(Map<String, dynamic> json);
   
-  // Hive type id for adapters
-  int get typeId;
+  /// Hive type ID for adapters (must be overridden in concrete classes)
+  static int get typeId => throw UnimplementedError('typeId getter not implemented');
   
-  // Convert to Hive-compatible map
+  /// Converts the model to a Hive-compatible map
   Map<String, dynamic> toHive() => toJson();
   
-  // Create from Hive map
+  /// Creates an instance of the model from a Hive map
   T fromHive(Map<String, dynamic> json) => fromJson(json);
-}
-
-// Helper class for Hive type adapters
-abstract class HiveTypeAdapter<T extends BaseModel<T>> extends TypeAdapter<T> {
-  @override
-  T read(BinaryReader reader) {
-    final json = Map<String, dynamic>.from(reader.readMap());
-    return fromHive(json);
-  }
-
-  @override
-  void write(BinaryWriter writer, T obj) {
-    writer.writeMap(obj.toHive());
-  }
   
-  T fromHive(Map<String, dynamic> json);
+  /// Register the Hive adapter for this model
+  static void registerHiveAdapter() {
+    // Should be overridden by concrete classes
+    throw UnimplementedError('registerHiveAdapter() must be implemented');
+  }
 }

@@ -20,14 +20,14 @@ final getIt = GetIt.instance;
 void main() async {
   print('=== APP STARTING ===');
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   if (kDebugMode) {
     debugPrint('Initializing Hive and service locator...');
   }
-  
+
   try {
     print('Initializing Hive and service locator...');
-    
+
     // Initialize Hive with different paths for web and non-web
     if (kIsWeb) {
       // For web, we don't need a path
@@ -37,34 +37,41 @@ void main() async {
       final appDocumentDir = await getApplicationDocumentsDirectory();
       await Hive.initFlutter(appDocumentDir.path);
     }
-    
-    // Register Hive adapters
-    Hive.registerAdapter(TaskAdapter());
+
+    // Register Hive adapters using the new registration method
+    Task.registerHiveAdapter();
+    // Register other adapters as needed
     Hive.registerAdapter(RecurrenceRuleAdapter());
     Hive.registerAdapter(RecurrenceFrequencyAdapter());
-    
+
     // Open the settings box
     await Hive.openBox('settings');
-    
+
     // Initialize service locator which will set up all services
     await setupLocator();
-    
+
     if (kDebugMode) {
       debugPrint('Hive and service locator initialized successfully');
     }
-    
+
     print('Initialization complete, running app...');
-    
+
     // Get saved theme mode
     final prefs = await SharedPreferences.getInstance();
     final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+
+    // Get the TaskService instance from the service locator
+    final taskService = getIt<TaskService>();
     
-    print('Initialization complete, running app...');
     runApp(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode: isDarkMode)),
-          Provider<TaskService>(create: (_) => getIt<TaskService>()),
+          ChangeNotifierProvider<ThemeProvider>(
+            create: (_) => ThemeProvider(isDarkMode: isDarkMode),
+          ),
+          ChangeNotifierProvider<TaskService>.value(
+            value: taskService,
+          ),
         ],
         child: const MyApp(),
       ),
@@ -73,7 +80,7 @@ void main() async {
     // Handle any initialization errors
     print('Error during initialization: $e');
     print('Stack trace: $stackTrace');
-    
+
     runApp(
       MaterialApp(
         home: Scaffold(
@@ -108,13 +115,13 @@ void main() async {
 
 class ThemeProvider with ChangeNotifier {
   bool _isDarkMode;
-  
+
   ThemeProvider({required bool isDarkMode}) : _isDarkMode = isDarkMode;
-  
+
   bool get isDarkMode => _isDarkMode;
-  
+
   ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
-  
+
   void toggleTheme() async {
     _isDarkMode = !_isDarkMode;
     final prefs = await SharedPreferences.getInstance();
@@ -133,7 +140,8 @@ class MyApp extends StatelessWidget {
         print('Building app with theme mode: ${themeProvider.themeMode}');
         return MaterialApp(
           title: 'Fam Planner',
-          debugShowCheckedModeBanner: true, // Show debug banner to verify updates
+          debugShowCheckedModeBanner:
+              true, // Show debug banner to verify updates
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,
@@ -163,4 +171,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

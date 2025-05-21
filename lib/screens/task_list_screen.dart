@@ -75,6 +75,12 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This will be called when the dependencies change, including when TaskService notifies listeners
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -91,8 +97,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
               );
               
               if (result == true) {
-                // Refresh the task list if a task was added/updated
-                setState(() {});
+                // The TaskService will notify listeners automatically
+                // No need to call setState here
               }
             },
           ),
@@ -285,13 +291,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
                         );
                         
                         if (result == true) {
-                          setState(() {});
+                          // The TaskService will notify listeners automatically
+                          // No need to call setState here
                         }
                       },
                       onComplete: (bool? value) async {
                         if (value != null) {
                           await taskService.toggleTaskCompletion(task.id);
-                          setState(() {});
+                          // No need to call setState here as TaskService will notify listeners
                         }
                       },
                     );

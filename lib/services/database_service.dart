@@ -34,17 +34,18 @@ class DatabaseService {
     if (_isInitialized) return;
     
     try {
-      // Register adapters if not already registered
-      if (!Hive.isAdapterRegistered(1)) {
+      // Register adapters using their registration methods
+      Task.registerHiveAdapter();
+      
+      // Register other adapters using their type IDs
+      // Note: These should be updated to use static type IDs if available
+      if (!Hive.isAdapterRegistered(1)) { // HouseholdMember
         Hive.registerAdapter(HouseholdMemberAdapter());
       }
-      if (!Hive.isAdapterRegistered(2)) {
-        Hive.registerAdapter(TaskAdapter());
-      }
-      if (!Hive.isAdapterRegistered(3)) {
+      if (!Hive.isAdapterRegistered(3)) { // ShoppingItem
         Hive.registerAdapter(ShoppingItemAdapter());
       }
-      if (!Hive.isAdapterRegistered(4)) {
+      if (!Hive.isAdapterRegistered(4)) { // CalendarEvent
         Hive.registerAdapter(CalendarEventAdapter());
       }
       

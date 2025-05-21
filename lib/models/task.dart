@@ -7,9 +7,22 @@ import 'package:fam_planner/models/recurrence_rule.dart';
 
 part 'task.g.dart';
 
+// Register the DurationAdapter
+@HiveType(typeId: 100)
+class HiveDuration extends HiveObject {
+  @HiveField(0)
+  final int microseconds;
+
+  HiveDuration(this.microseconds);
+
+  Duration toDuration() => Duration(microseconds: microseconds);
+  
+  factory HiveDuration.fromDuration(Duration duration) => HiveDuration(duration.inMicroseconds);
+}
+
 @HiveType(typeId: 2)
 @JsonSerializable(explicitToJson: true)
-class Task extends HiveObject implements BaseModel<Task> {
+class Task implements BaseModel<Task> {
   @HiveField(0)
   final String id;
   
@@ -44,17 +57,18 @@ class Task extends HiveObject implements BaseModel<Task> {
   @HiveField(10)
   final String category;
   
-  @HiveField(11)
+  @HiveField(11, defaultValue: null)
   final RecurrenceRule? recurrenceRule;
   
-  @HiveField(12)
+  @HiveField(12, defaultValue: const [])
   final List<String> attachmentPaths;
   
-  @HiveField(13)
+  @HiveField(13, defaultValue: true)
   final bool notifyBefore;
   
-  @HiveField(14)
-  final Duration? notificationInterval;
+  @HiveField(14, defaultValue: null)
+  @JsonKey(includeIfNull: false)
+  int? notificationIntervalMicros;
 
   Task({
     required this.id,
@@ -71,13 +85,23 @@ class Task extends HiveObject implements BaseModel<Task> {
     this.recurrenceRule,
     List<String>? attachmentPaths,
     this.notifyBefore = true,
-    this.notificationInterval,
+    Duration? notificationInterval,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now(),
-        attachmentPaths = attachmentPaths ?? [];
+        attachmentPaths = attachmentPaths ?? [],
+        notificationIntervalMicros = notificationInterval?.inMicroseconds;
   
   @override
-  int get typeId => 2;
+  static int get typeId => 2;
+  
+  static const int hiveTypeId = 2;
+  
+  /// Registers the Hive adapter for the Task model
+  static void registerHiveAdapter() {
+    if (!Hive.isAdapterRegistered(hiveTypeId)) {
+      Hive.registerAdapter(TaskAdapter());
+    }
+  }
   
   @override
   Map<String, dynamic> toHive() => toJson();
@@ -94,6 +118,18 @@ class Task extends HiveObject implements BaseModel<Task> {
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
   
   // Helper methods
+  /// Gets the notification interval as a Duration, or null if not set
+  Duration? get notificationInterval => 
+      notificationIntervalMicros != null 
+          ? Duration(microseconds: notificationIntervalMicros!) 
+          : null;
+          
+  /// Sets the notification interval from a Duration
+  set notificationInterval(Duration? duration) {
+    notificationIntervalMicros = duration?.inMicroseconds;
+  }
+  
+  /// Returns true if the task is overdue
   bool get isOverdue => !isDone && dueDate.isBefore(DateTime.now());
   
   bool isDueOn(DateTime date) {

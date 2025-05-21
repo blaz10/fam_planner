@@ -1,9 +1,10 @@
 import 'package:fam_planner/core/constants/app_constants.dart';
 import 'package:fam_planner/models/task.dart';
 import 'package:fam_planner/services/database_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
-class TaskService {
+class TaskService extends ChangeNotifier {
   late final Box<Task> _box;
 
   TaskService() {
@@ -14,7 +15,8 @@ class TaskService {
   // CRUD Operations
   Future<void> addTask(Task task) async {
     await _box.put(task.id, task);
-    
+    notifyListeners();
+
     // Schedule notifications if needed
     if (task.notifyBefore && task.notificationInterval != null) {
       _scheduleNotification(task);
@@ -23,7 +25,8 @@ class TaskService {
 
   Future<void> updateTask(Task task) async {
     await _box.put(task.id, task);
-    
+    notifyListeners();
+
     // Reschedule notifications
     if (task.notifyBefore && task.notificationInterval != null) {
       _scheduleNotification(task);
@@ -32,6 +35,7 @@ class TaskService {
 
   Future<void> deleteTask(String id) async {
     await _box.delete(id);
+    notifyListeners();
     // Cancel any pending notifications
     _cancelNotification(id);
   }
@@ -64,12 +68,12 @@ class TaskService {
   List<Task> getUpcomingTasks({int daysAhead = 7}) {
     final now = DateTime.now();
     final endDate = now.add(Duration(days: daysAhead));
-    
+
     return _box.values.where((task) {
-      return !task.isDone && 
-             task.dueDate.isAfter(now) && 
-             task.dueDate.isBefore(endDate);
-    }).toList()
+        return !task.isDone &&
+            task.dueDate.isAfter(now) &&
+            task.dueDate.isBefore(endDate);
+      }).toList()
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   }
 
@@ -85,8 +89,8 @@ class TaskService {
   // Get tasks by date range
   List<Task> getTasksByDateRange(DateTime start, DateTime end) {
     return _box.values.where((task) {
-      return task.dueDate.isAfter(start) && task.dueDate.isBefore(end);
-    }).toList()
+        return task.dueDate.isAfter(start) && task.dueDate.isBefore(end);
+      }).toList()
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   }
 
@@ -95,14 +99,13 @@ class TaskService {
     final task = _box.get(id);
     if (task != null) {
       await _box.put(id, task.copyWith(isDone: !task.isDone));
+      notifyListeners();
     }
   }
 
   // Get tasks assigned to a specific user
   List<Task> getTasksAssignedTo(String userId) {
-    return _box.values
-        .where((task) => task.assignedTo == userId)
-        .toList()
+    return _box.values.where((task) => task.assignedTo == userId).toList()
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   }
 
@@ -114,40 +117,40 @@ class TaskService {
   // Generate recurring instances for a task
   List<Task> generateRecurringInstances(Task task, {int count = 10}) {
     if (!task.isRecurring) return [task];
-    
+
     final instances = <Task>[];
     var currentDate = task.dueDate;
-    
+
     for (var i = 0; i < count; i++) {
-      instances.add(task.copyWith(
-        id: '${task.id}_$i',
-        dueDate: currentDate,
-        isDone: false,
-      ));
-      
+      instances.add(
+        task.copyWith(id: '${task.id}_$i', dueDate: currentDate, isDone: false),
+      );
+
       currentDate = task.recurrenceRule!.getNextOccurrence(currentDate);
     }
-    
+
     return instances;
   }
 
   // Notification handling
   void _scheduleNotification(Task task) {
     if (!task.notifyBefore || task.notificationInterval == null) return;
-    
+
     final notificationTime = task.dueDate.subtract(task.notificationInterval!);
-    
+
     // TODO: Implement notification scheduling
     // This is a placeholder for the actual notification scheduling logic
     // You would typically use a package like flutter_local_notifications
-    
-    print('Scheduling notification for task: ${task.title} at $notificationTime');
+
+    print(
+      'Scheduling notification for task: ${task.title} at $notificationTime',
+    );
   }
 
   void _cancelNotification(String taskId) {
     // TODO: Implement notification cancellation
     // This would cancel any pending notifications for the given task
-    
+
     print('Cancelling notifications for task: $taskId');
   }
 

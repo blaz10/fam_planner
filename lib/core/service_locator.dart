@@ -29,10 +29,10 @@ Future<void> setupLocator() async {
     final databaseService = DatabaseService();
     await databaseService.init();
     locator.registerSingleton<DatabaseService>(databaseService);
-    
+
     // Register services
     locator.registerSingleton<TaskService>(TaskService());
-    
+
     // Register other services here as needed
   } catch (e) {
     print('Error in setupLocator: $e');
