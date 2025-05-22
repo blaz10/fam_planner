@@ -82,40 +82,48 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavBar() {
-    print('Building BottomNavigationBar with index: $_currentIndex');
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     final items = [
       BottomNavigationBarItem(
         icon: const Icon(Icons.task_outlined),
         activeIcon: const Icon(Icons.task),
-        label: 'Tasks', // Using hardcoded text for debugging
+        label: 'Tasks',
+        tooltip: '',
       ),
       BottomNavigationBarItem(
         icon: const Icon(Icons.calendar_today_outlined),
         activeIcon: const Icon(Icons.calendar_today),
         label: 'Calendar',
+        tooltip: '',
       ),
       BottomNavigationBarItem(
         icon: const Icon(Icons.shopping_cart_outlined),
         activeIcon: const Icon(Icons.shopping_cart),
         label: 'Shopping',
+        tooltip: '',
       ),
       BottomNavigationBarItem(
         icon: const Icon(Icons.person_outline),
         activeIcon: const Icon(Icons.person),
         label: 'Profile',
+        tooltip: '',
       ),
     ];
-
-    print('BottomNavigationBar items: ${items.map((e) => e.label).toList()}');
     
     return BottomNavigationBar(
       currentIndex: _currentIndex,
-      onTap: (index) {
-        print('BottomNavigationBar onTap: $index');
-        _onTabTapped(index);
-      },
+      onTap: (index) => _onTabTapped(index),
       type: BottomNavigationBarType.fixed,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      selectedItemColor: theme.colorScheme.primary,
+      unselectedItemColor: isDark ? Colors.grey[400] : Colors.grey[600],
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+      unselectedLabelStyle: const TextStyle(fontSize: 12),
+      elevation: 8.0,
+      backgroundColor: isDark ? theme.colorScheme.surface : Colors.white,
       items: items,
     );
   }

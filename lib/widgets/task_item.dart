@@ -17,8 +17,14 @@ class TaskItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final textTheme = theme.textTheme;
     final isOverdue = !task.isDone && task.dueDate.isBefore(DateTime.now());
+    
+    // Text colors
+    final defaultTextColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey[400] : Colors.grey[700];
+    final disabledTextColor = isDark ? Colors.grey[600] : Colors.grey[400];
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -62,7 +68,11 @@ class TaskItem extends StatelessWidget {
                                 task.title,
                                 style: textTheme.titleMedium?.copyWith(
                                   decoration: task.isDone ? TextDecoration.lineThrough : null,
-                                  color: task.isDone ? Colors.grey : null,
+                                  color: task.isDone 
+                                      ? disabledTextColor 
+                                      : defaultTextColor,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.3,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -90,7 +100,10 @@ class TaskItem extends StatelessWidget {
                             task.description!,
                             style: textTheme.bodySmall?.copyWith(
                               decoration: task.isDone ? TextDecoration.lineThrough : null,
-                              color: task.isDone ? Colors.grey : null,
+                              color: task.isDone 
+                                  ? disabledTextColor 
+                                  : secondaryTextColor,
+                              height: 1.3,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -107,32 +120,54 @@ class TaskItem extends StatelessWidget {
                                 Icon(
                                   Icons.calendar_today,
                                   size: 14,
-                                  color: isOverdue ? Colors.red : Colors.grey,
+                                  color: isOverdue 
+                                      ? Colors.red[isDark ? 300 : 600]
+                                      : secondaryTextColor,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   DateFormat('MMM d, y • h:mm a').format(task.dueDate),
                                   style: textTheme.bodySmall?.copyWith(
-                                    color: isOverdue ? Colors.red : Colors.grey,
+                                    color: isOverdue 
+                                        ? Colors.red[isDark ? 300 : 600]
+                                        : secondaryTextColor,
                                     fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
+                                    height: 1.3,
                                   ),
                                 ),
                               ],
                             ),
                             
                             const Spacer(),
-                            
-                            // Category
+                                                        // Category
                             if (task.category.isNotEmpty) ...[
                               Container(
+                                constraints: const BoxConstraints(maxWidth: 120),
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[200],
+                                  color: isDark 
+                                      ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+                                      : theme.colorScheme.surfaceVariant,
                                   borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isDark 
+                                        ? theme.colorScheme.outlineVariant
+                                        : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                                    width: 0.5,
+                                  ),
                                 ),
                                 child: Text(
                                   task.category,
-                                  style: textTheme.bodySmall,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark 
+                                        ? theme.colorScheme.onSurfaceVariant
+                                        : theme.colorScheme.onSurfaceVariant.withOpacity(0.9),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],

@@ -171,19 +171,66 @@ class _TaskListScreenState extends State<TaskListScreen> {
               firstDay: DateTime.utc(2020, 1, 1),
               lastDay: DateTime.utc(2030, 12, 31),
               focusedDay: _focusedDay,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               calendarFormat: _calendarFormat,
               startingDayOfWeek: StartingDayOfWeek.monday,
-              calendarStyle: CalendarStyle(
-                selectedDecoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.5),
-                  shape: BoxShape.circle,
+              daysOfWeekHeight: 40.0,
+              rowHeight: 48.0,
+              headerStyle: HeaderStyle(
+                formatButtonVisible: true,
+                titleCentered: true,
+                titleTextStyle: const TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                leftChevronIcon: const Icon(Icons.chevron_left, size: 28.0),
+                rightChevronIcon: const Icon(Icons.chevron_right, size: 28.0),
+                headerMargin: const EdgeInsets.only(bottom: 8.0),
+                formatButtonDecoration: BoxDecoration(
+                  border: Border.all(),
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
               ),
+              calendarStyle: CalendarStyle(
+                // Today's date style
+                todayDecoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2.0,
+                  ),
+                ),
+                // Selected date style
+                selectedDecoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                // Event marker style
+                markerDecoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                // Cell styling
+                cellMargin: const EdgeInsets.all(4.0),
+                cellPadding: const EdgeInsets.all(8.0),
+                defaultTextStyle: const TextStyle(fontSize: 16.0),
+                todayTextStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.black87
+                      : Colors.black87,
+                ),
+                selectedTextStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                weekendTextStyle: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : Colors.black87,
+                ),
+                markersAutoAligned: true,
+                markerSize: 6.0,
+                markersMaxCount: 1,
+              ),
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -196,7 +243,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
                 });
               },
               onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
+                setState(() {
+                  _focusedDay = focusedDay;
+                });
               },
               eventLoader: (day) {
                 // This would be replaced with actual task counts for the day
