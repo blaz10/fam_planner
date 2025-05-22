@@ -280,27 +280,80 @@ class _TaskListScreenState extends State<TaskListScreen> {
                   itemCount: tasks.length,
                   itemBuilder: (context, index) {
                     final task = tasks[index];
-                    return TaskItem(
-                      task: task,
-                      onTap: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TaskFormScreen(task: task),
+                    // Wrap TaskItem with Dismissible for swipe-to-delete
+                    return Dismissible(
+                      key: Key(task.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20.0),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.white,
+                        ),
+                      ),
+                      confirmDismiss: (direction) async {
+                        // Show a confirmation dialog before deleting
+                        return await showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Confirm Delete'),
+                              content: const Text('Are you sure you want to delete this task?'),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('CANCEL'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      onDismissed: (direction) {
+                        // Remove the task when dismissed
+                        taskService.deleteTask(task.id);
+                        // Show a snackbar to undo the deletion
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Task "${task.title}" deleted'),
+                            action: SnackBarAction(
+                              label: 'UNDO',
+                              onPressed: () {
+                                taskService.addTask(task);
+                              },
+                            ),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
-                        
-                        if (result == true) {
-                          // The TaskService will notify listeners automatically
-                          // No need to call setState here
-                        }
                       },
-                      onComplete: (bool? value) async {
-                        if (value != null) {
-                          await taskService.toggleTaskCompletion(task.id);
-                          // No need to call setState here as TaskService will notify listeners
-                        }
-                      },
+                      child: TaskItem(
+                        task: task,
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TaskFormScreen(task: task),
+                            ),
+                          );
+                          
+                          if (result == true) {
+                            // The TaskService will notify listeners automatically
+                            // No need to call setState here
+                          }
+                        },
+                        onComplete: (bool? value) async {
+                          if (value != null) {
+                            await taskService.toggleTaskCompletion(task.id);
+                            // No need to call setState here as TaskService will notify listeners
+                          }
+                        },
+                      ),
                     );
                   },
                 );
