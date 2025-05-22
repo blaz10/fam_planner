@@ -8,10 +8,12 @@ import 'package:fam_planner/widgets/recurrence_rule_picker.dart';
 
 class TaskFormScreen extends StatefulWidget {
   final Task? task;
+  final DateTime? initialDate;
 
   const TaskFormScreen({
     Key? key,
     this.task,
+    this.initialDate,
   }) : super(key: key);
 
   @override
@@ -52,7 +54,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     super.initState();
     _taskService = Provider.of<TaskService>(context, listen: false);
     
-    // Initialize form with task data if editing
+    // Initialize form with task data if editing, or with initial date if provided
     if (widget.task != null) {
       final task = widget.task!;
       _titleController.text = task.title;
@@ -65,6 +67,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       _recurrenceRule = task.recurrenceRule;
       _notifyBefore = task.notifyBefore;
       _notificationInterval = task.notificationInterval ?? const Duration(hours: 1);
+    } else if (widget.initialDate != null) {
+      // Set initial date if provided for new tasks
+      _dueDate = widget.initialDate!;
+      _dueTime = TimeOfDay.fromDateTime(widget.initialDate!);
     }
   }
 

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
-import '../../../models/task.dart';
-import '../../../screens/task_form_screen.dart';
 import '../../../services/task_service.dart';
+import '../../../screens/task_form_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -27,25 +25,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _addNewTask() {
     // Navigate to the task form with the selected date pre-filled
     final selectedDate = _selectedDay ?? DateTime.now();
-
-    // Create a new task with minimal required fields
-    final newTask = Task(
-      id: const Uuid().v4(),
-      title: '',
-      description: null,
-      room: 'General',
-      dueDate: selectedDate,
-      priority: 1, // Medium priority by default
-      category: 'General',
-      notifyBefore: true,
-      notificationInterval: const Duration(hours: 1),
-    );
-
-    // Navigate to the form without the task parameter to ensure it's treated as a new task
+    
+    // Navigate to the TaskFormScreen with just the selected date
+    // This will make it create a new task with this date pre-filled
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TaskFormScreen(task: newTask),
+        builder: (context) => TaskFormScreen(
+          initialDate: selectedDate,
+        ),
       ),
     );
   }
