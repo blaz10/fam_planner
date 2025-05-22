@@ -38,6 +38,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   List<Task> _getFilteredTasks(List<Task> tasks) {
+    // This method will be called whenever the widget rebuilds, which happens when _selectedCategory, _selectedPriority, or _showCompleted changes
     return tasks.where((task) {
       // Filter by search query
       if (_searchQuery.isNotEmpty &&
@@ -78,6 +79,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // This will be called when the dependencies change, including when TaskService notifies listeners
+    
+    // Force a rebuild when dependencies change to ensure the task list is updated
+    if (mounted) {
+      setState(() {
+        // Trigger a rebuild
+      });
+    }
   }
 
   @override
@@ -237,6 +245,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
           Expanded(
             child: Consumer<TaskService>(
               builder: (context, taskService, _) {
+                // This will be rebuilt whenever taskService notifies listeners or when local state changes
                 final tasks = _getFilteredTasks(taskService.getAll());
                 
                 if (tasks.isEmpty) {
@@ -413,15 +422,17 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   void _showFilterDialog(BuildContext context) {
     final taskService = Provider.of<TaskService>(context, listen: false);
+    
+    // Create local copies of the current filter values
     String? selectedCategory = _selectedCategory == 'All' ? null : _selectedCategory;
     int? selectedPriority = _selectedPriority == -1 ? null : _selectedPriority;
     bool showCompleted = _showCompleted;
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (BuildContext context, StateSetter setDialogState) {
             return AlertDialog(
               title: const Text('Filter Tasks'),
               content: SingleChildScrollView(
@@ -432,6 +443,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     const Text('Category', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       value: selectedCategory,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
@@ -449,8 +461,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
                           );
                         }).toList(),
                       ],
-                      onChanged: (value) {
-                        setState(() {
+                      onChanged: (String? value) {
+                        setDialogState(() {
                           selectedCategory = value;
                         });
                       },
@@ -458,7 +470,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     const SizedBox(height: 16),
                     const Text('Priority', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
+                    DropdownButtonFormField<int?>(
+                      isExpanded: true,
                       value: selectedPriority,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
@@ -482,8 +495,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
                           child: Text('High'),
                         ),
                       ],
-                      onChanged: (value) {
-                        setState(() {
+                      onChanged: (int? value) {
+                        setDialogState(() {
                           selectedPriority = value;
                         });
                       },
@@ -493,8 +506,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
                       children: [
                         Checkbox(
                           value: showCompleted,
-                          onChanged: (value) {
-                            setState(() {
+                          onChanged: (bool? value) {
+                            setDialogState(() {
                               showCompleted = value ?? false;
                             });
                           },
@@ -508,7 +521,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    setState(() {
+                    setDialogState(() {
                       selectedCategory = null;
                       selectedPriority = null;
                       showCompleted = true;
@@ -522,10 +535,17 @@ class _TaskListScreenState extends State<TaskListScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    // Update the parent widget's state
                     setState(() {
                       _selectedCategory = selectedCategory ?? 'All';
                       _selectedPriority = selectedPriority ?? -1;
                       _showCompleted = showCompleted;
+                      
+                      // Debug output
+                      print('Applied filters:');
+                      print('  - Category: ${_selectedCategory}');
+                      print('  - Priority: ${_selectedPriority}');
+                      print('  - Show completed: $_showCompleted');
                     });
                     Navigator.pop(context);
                   },

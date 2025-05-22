@@ -6,15 +6,33 @@ import 'package:hive/hive.dart';
 
 class TaskService extends ChangeNotifier {
   late final Box<Task> _box;
+  bool _isInitialized = false;
 
-  TaskService() {
-    // Get the box from DatabaseService
-    _box = DatabaseService().getBox<Task>(AppConstants.tasksBox);
+  bool get isInitialized => _isInitialized;
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    try {
+      // Get the box from DatabaseService
+      _box = DatabaseService().getBox<Task>(AppConstants.tasksBox);
+      _isInitialized = true;
+      print('TaskService initialized successfully');
+    } catch (e) {
+      print('Error initializing TaskService: $e');
+      rethrow;
+    }
   }
 
   // CRUD Operations
   Future<void> addTask(Task task) async {
+    if (!_isInitialized) await initialize();
+    
+    print('Adding task: ${task.title}');
     await _box.put(task.id, task);
+    print('Task added successfully');
+    
+    // Notify listeners about the change
     notifyListeners();
 
     // Schedule notifications if needed
@@ -24,7 +42,13 @@ class TaskService extends ChangeNotifier {
   }
 
   Future<void> updateTask(Task task) async {
+    if (!_isInitialized) await initialize();
+    
+    print('Updating task: ${task.id}');
     await _box.put(task.id, task);
+    print('Task updated successfully');
+    
+    // Notify listeners about the change
     notifyListeners();
 
     // Reschedule notifications
@@ -34,8 +58,15 @@ class TaskService extends ChangeNotifier {
   }
 
   Future<void> deleteTask(String id) async {
+    if (!_isInitialized) await initialize();
+    
+    print('Deleting task: $id');
     await _box.delete(id);
+    print('Task deleted successfully');
+    
+    // Notify listeners about the change
     notifyListeners();
+    
     // Cancel any pending notifications
     _cancelNotification(id);
   }
@@ -162,10 +193,10 @@ class TaskService extends ChangeNotifier {
   void _cancelNotification(String taskId) {
     // TODO: Implement notification cancellation
     // This would cancel any pending notifications for the given task
-
     print('Cancelling notifications for task: $taskId');
   }
 
+  
   // Clean up
   Future<void> close() async {
     await _box.close();

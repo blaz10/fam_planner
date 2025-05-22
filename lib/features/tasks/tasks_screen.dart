@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/utils/app_localizations.dart';
 import '../../../models/task.dart';
-import '../../../services/database_service.dart';
+import '../../../services/task_service.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -13,7 +14,6 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final DatabaseService _databaseService = DatabaseService();
   
   @override
   void initState() {
@@ -39,6 +39,16 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
             Tab(text: AppLocalizations.of(context)!.translate('completed')),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              // This will trigger a rebuild of the Consumer
+              setState(() {});
+            },
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: TabBarView(
         controller: _tabController,
@@ -51,36 +61,58 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
   }
   
   Widget _buildTaskList(bool showCompleted) {
-    return FutureBuilder<List<Task>>(
-      future: _databaseService.getTasks(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Consumer<TaskService>(
+      builder: (context, taskService, _) {
+        // Add debug log
+        print('Building task list with showCompleted: $showCompleted');
         
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
+        final tasks = taskService.getAll();
+        print('Total tasks: ${tasks.length}');
         
-        final tasks = snapshot.data ?? [];
-        final filteredTasks = tasks.where((task) => task.isDone == showCompleted).toList();
+        final filteredTasks = tasks.where((task) => task.isDone == showCompleted).toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        
+        print('Filtered tasks: ${filteredTasks.length}');
         
         if (filteredTasks.isEmpty) {
           return Center(
-            child: Text(
-              AppLocalizations.of(context)!.translate('no_tasks'),
-              style: Theme.of(context).textTheme.titleMedium,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.assignment_outlined, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.translate('no_tasks'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (tasks.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '${tasks.where((t) => t.isDone).length} completed tasks hidden',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
             ),
           );
         }
         
-        return ListView.builder(
-          padding: const EdgeInsets.all(8.0),
-          itemCount: filteredTasks.length,
-          itemBuilder: (context, index) {
-            final task = filteredTasks[index];
-            return _buildTaskTile(task);
+        return RefreshIndicator(
+          onRefresh: () async {
+            // Force a refresh by calling setState which will trigger a rebuild
+            if (mounted) {
+              setState(() {});
+            }
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8.0),
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              final task = filteredTasks[index];
+              return _buildTaskTile(task);
+            },
+          ),
         );
       },
     );
@@ -133,14 +165,14 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
     );
   }
   
-  void _toggleTaskStatus(Task task, bool isDone) async {
+  void _toggleTaskStatus(Task task, bool isDone) {
+    final taskService = Provider.of<TaskService>(context, listen: false);
     final updatedTask = task.copyWith(isDone: isDone);
-    await _databaseService.updateTask(updatedTask);
-    setState(() {});
+    taskService.updateTask(updatedTask);
+    // No need to call setState here as TaskService will notify listeners
   }
   
   void _showTaskDetails(Task task) {
-    // TODO: Show task details in a dialog or new screen
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -149,7 +181,8 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${AppLocalizations.of(context)!.translate('room')}: ${task.room}'),
+            if (task.category.isNotEmpty)
+              Text('${AppLocalizations.of(context)!.translate('category')}: ${task.category}'),
             if (task.description?.isNotEmpty ?? false)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),

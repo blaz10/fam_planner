@@ -60,8 +60,9 @@ void main() async {
     final prefs = await SharedPreferences.getInstance();
     final isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
-    // Get the TaskService instance from the service locator
+    // Get the TaskService instance from the service locator and initialize it
     final taskService = getIt<TaskService>();
+    await taskService.initialize();
 
     runApp(
       MultiProvider(
@@ -69,7 +70,9 @@ void main() async {
           ChangeNotifierProvider<ThemeProvider>(
             create: (_) => ThemeProvider(isDarkMode: isDarkMode),
           ),
-          ChangeNotifierProvider<TaskService>.value(value: taskService),
+          ChangeNotifierProvider<TaskService>(
+            create: (_) => taskService,
+          ),
         ],
         child: const MyApp(),
       ),
