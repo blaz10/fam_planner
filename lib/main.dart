@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'core/utils/app_localizations.dart';
 import 'core/service_locator.dart';
 import 'models/task.dart';
@@ -114,23 +115,6 @@ void main() async {
   }
 }
 
-class ThemeProvider with ChangeNotifier {
-  bool _isDarkMode;
-
-  ThemeProvider({required bool isDarkMode}) : _isDarkMode = isDarkMode;
-
-  bool get isDarkMode => _isDarkMode;
-
-  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
-
-  void toggleTheme() async {
-    _isDarkMode = !_isDarkMode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDarkMode', _isDarkMode);
-    notifyListeners();
-  }
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -138,11 +122,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        print('Building app with theme mode: ${themeProvider.themeMode}');
         return MaterialApp(
           title: 'Fam Planner',
-          debugShowCheckedModeBanner:
-              true, // Show debug banner to verify updates
+          debugShowCheckedModeBanner: true,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeProvider.themeMode,

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/utils/app_localizations.dart';
-import '../../../main.dart'; // For ThemeProvider
 
 // Import screen widgets
 import '../tasks/tasks_screen.dart';
@@ -63,15 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Fam Planner - ${_getScreenName(_currentIndex)}'),
-        actions: [
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, _) => IconButton(
-              icon: Icon(
-                themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              ),
-              onPressed: themeProvider.toggleTheme,
-            ),
-          ),
+        actions: const [
+          // Theme toggle has been moved to the profile screen
         ],
       ),
       body: _screens[_currentIndex],

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/utils/app_localizations.dart';
 import '../../../models/household_member.dart';
 import '../../../services/database_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -61,6 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     
     return Scaffold(
       appBar: AppBar(
@@ -92,6 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildStatistics(),
               const SizedBox(height: 32.0),
               _buildLogoutButton(theme),
+              const SizedBox(height: 24.0),
+              _buildThemeToggle(themeProvider, theme),
             ],
           ),
         ),
@@ -331,6 +336,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildThemeToggle(ThemeProvider themeProvider, ThemeData theme) {
+    return Card(
+      child: SwitchListTile(
+        title: const Text('Dark Mode'),
+        subtitle: Text(themeProvider.isDarkMode ? 'On' : 'Off'),
+        value: themeProvider.isDarkMode,
+        onChanged: (value) {
+          themeProvider.toggleTheme();
+        },
+        secondary: Icon(
+          themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+          color: theme.colorScheme.primary,
         ),
       ),
     );
