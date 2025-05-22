@@ -93,6 +93,18 @@ class TaskService extends ChangeNotifier {
       }).toList()
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   }
+  
+  // Get tasks for a specific day
+  List<Task> getTasksForDay(DateTime day) {
+    final startOfDay = DateTime(day.year, day.month, day.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    return _box.values.where((task) {
+      return !task.dueDate.isBefore(startOfDay) && 
+             task.dueDate.isBefore(endOfDay);
+    }).toList()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  }
 
   // Toggle task completion status
   Future<void> toggleTaskCompletion(String id) async {

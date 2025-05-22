@@ -62,16 +62,14 @@ void main() async {
 
     // Get the TaskService instance from the service locator
     final taskService = getIt<TaskService>();
-    
+
     runApp(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<ThemeProvider>(
             create: (_) => ThemeProvider(isDarkMode: isDarkMode),
           ),
-          ChangeNotifierProvider<TaskService>.value(
-            value: taskService,
-          ),
+          ChangeNotifierProvider<TaskService>.value(value: taskService),
         ],
         child: const MyApp(),
       ),
