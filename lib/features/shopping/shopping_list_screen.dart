@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fam_planner/core/service_locator.dart';
-import 'package:fam_planner/screens/shopping_screen.dart';
+import 'shopping_screen.dart';
 import 'package:fam_planner/services/shopping_service.dart';
 
 class ShoppingListScreen extends StatelessWidget {

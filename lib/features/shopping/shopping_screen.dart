@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-
-import '../../../core/utils/app_localizations.dart';
-import '../../../models/shopping_item.dart';
-import '../../../services/database_service.dart';
+import 'package:provider/provider.dart';
+import 'package:fam_planner/models/shopping_item.dart';
+import 'package:fam_planner/services/shopping_service.dart';
+import 'package:fam_planner/widgets/shopping_item_tile.dart';
 
 class ShoppingScreen extends StatefulWidget {
   const ShoppingScreen({super.key});
@@ -11,133 +11,98 @@ class ShoppingScreen extends StatefulWidget {
   State<ShoppingScreen> createState() => _ShoppingScreenState();
 }
 
-class _ShoppingScreenState extends State<ShoppingScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final DatabaseService _databaseService = DatabaseService();
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-  
+class _ShoppingScreenState extends State<ShoppingScreen> {
+  final TextEditingController _itemController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController(text: '1');
+  String? _selectedCategory;
+  final TextEditingController _notesController = TextEditingController();
+
   @override
   void dispose() {
-    _tabController.dispose();
-    _searchController.dispose();
+    _itemController.dispose();
+    _quantityController.dispose();
+    _notesController.dispose();
     super.dispose();
+  }
+
+  bool _isInitializing = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initializeShoppingService();
+  }
+
+  Future<void> _initializeShoppingService() async {
+    if (_isInitializing) return;
+    
+    final shoppingService = Provider.of<ShoppingService>(context, listen: false);
+    if (!shoppingService.isInitialized) {
+      setState(() => _isInitializing = true);
+      try {
+        await shoppingService.init();
+      } catch (e) {
+        debugPrint('Error initializing shopping service: $e');
+        // Handle error if needed
+      } finally {
+        if (mounted) {
+          setState(() => _isInitializing = false);
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.translate('shopping')),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: AppLocalizations.of(context)!.translate('to_buy')),
-            Tab(text: AppLocalizations.of(context)!.translate('bought')),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildShoppingList(false),
-                _buildShoppingList(true),
-              ],
-            ),
+        title: const Text('Shopping List'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _showClearAllDialog,
+            tooltip: 'Clear All',
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddItemDialog,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-  
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: AppLocalizations.of(context)!.translate('search_items'),
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value.toLowerCase();
-          });
-        },
-      ),
-    );
-  }
-  
-  Widget _buildShoppingList(bool showBought) {
-    return FutureBuilder<List<ShoppingItem>>(
-      future: _databaseService.getShoppingItems(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        
-        var items = snapshot.data ?? [];
-        
-        // Filter by bought status and search query
-        items = items.where((item) {
-          final matchesBought = item.isBought == showBought;
-          final matchesSearch = _searchQuery.isEmpty || 
-              item.name.toLowerCase().contains(_searchQuery) ||
-              (item.category?.toLowerCase().contains(_searchQuery) ?? false);
-          return matchesBought && matchesSearch;
-        }).toList();
-        
-        if (items.isEmpty) {
-          return Center(
-            child: Text(
-              showBought 
-                  ? AppLocalizations.of(context)!.translate('no_bought_items')
-                  : AppLocalizations.of(context)!.translate('no_items_to_buy'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          );
-        }
-        
-        // Group by category if there are categories
-        final hasCategories = items.any((item) => item.category?.isNotEmpty ?? false);
-        
-        if (hasCategories) {
-          final categories = <String, List<ShoppingItem>>{};
-          
-          for (var item in items) {
-            final category = item.category ?? AppLocalizations.of(context)!.translate('uncategorized');
-            if (!categories.containsKey(category)) {
-              categories[category] = [];
-            }
-            categories[category]!.add(item);
+      body: Consumer<ShoppingService>(
+        builder: (context, shoppingService, _) {
+          if (_isInitializing || !shoppingService.isInitialized) {
+            return const Center(child: CircularProgressIndicator());
           }
+          final itemsByCategory = shoppingService.getItemsByCategory();
           
+          if (itemsByCategory.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 64,
+                    color: Theme.of(context).hintColor,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Your shopping list is empty',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap + to add an item',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            );
+          }
+
           return ListView.builder(
-            itemCount: categories.length,
+            padding: const EdgeInsets.only(bottom: 80),
+            itemCount: itemsByCategory.length,
             itemBuilder: (context, index) {
-              final category = categories.keys.elementAt(index);
-              final categoryItems = categories[category]!;
+              final category = itemsByCategory.keys.elementAt(index);
+              final items = itemsByCategory[category]!;
               
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,223 +111,243 @@ class _ShoppingScreenState extends State<ShoppingScreen> with SingleTickerProvid
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: Text(
                       category,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  ...categoryItems.map((item) => _buildShoppingItem(item)).toList(),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return ShoppingItemTile(
+                        item: item,
+                        onToggleBought: () => _toggleBoughtStatus(shoppingService, item.id),
+                        onDelete: () => _deleteItem(shoppingService, item.id),
+                        onEdit: () => _showEditDialog(shoppingService, item),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
                 ],
               );
             },
           );
-        } else {
-          return ListView.builder(
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              return _buildShoppingItem(items[index]);
-            },
-          );
-        }
-      },
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddItemDialog,
+        child: const Icon(Icons.add),
+      ),
     );
   }
-  
-  Widget _buildShoppingItem(ShoppingItem item) {
-    return Dismissible(
-      key: Key(item.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20.0),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(AppLocalizations.of(context)!.translate('confirm_delete')),
-            content: Text(
-              '${AppLocalizations.of(context)!.translate('delete_item_confirmation')} "${item.name}"?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(AppLocalizations.of(context)!.translate('cancel')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: Text(AppLocalizations.of(context)!.translate('delete')),
-              ),
-            ],
-          ),
+
+  Future<void> _showAddItemDialog() async {
+    _clearForm();
+    await _showItemDialog(
+      title: 'Add Item',
+      onSave: (ShoppingService shoppingService) async {
+        if (_itemController.text.trim().isEmpty) return;
+        
+        final newItem = ShoppingItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name: _itemController.text.trim(),
+          quantity: int.tryParse(_quantityController.text) ?? 1,
+          category: _selectedCategory,
+          notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
         );
+        
+        await shoppingService.addItem(newItem);
       },
-      onDismissed: (direction) {
-        _databaseService.deleteShoppingItem(item.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${item.name} ${AppLocalizations.of(context)!.translate('deleted')}'),
-            action: SnackBarAction(
-              label: AppLocalizations.of(context)!.translate('undo'),
-              onPressed: () {
-                _databaseService.addShoppingItem(item);
-              },
-            ),
-          ),
-        );
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: CheckboxListTile(
-          value: item.isBought,
-          onChanged: (value) => _toggleItemStatus(item, value ?? false),
-          title: Text(
-            item.name,
-            style: TextStyle(
-              decoration: item.isBought ? TextDecoration.lineThrough : null,
-            ),
-          ),
-          subtitle: item.quantity > 1
-              ? Text('${AppLocalizations.of(context)!.translate('quantity')}: ${item.quantity}')
-              : null,
-          secondary: item.notes?.isNotEmpty ?? false
-              ? IconButton(
-                  icon: const Icon(Icons.notes),
-                  onPressed: () => _showItemNotes(item),
-                )
-              : null,
-        ),
-      ),
     );
   }
-  
-  void _toggleItemStatus(ShoppingItem item, bool isBought) async {
-    final updatedItem = item.copyWith(isBought: isBought);
-    await _databaseService.updateShoppingItem(updatedItem);
-    setState(() {});
-  }
-  
-  void _showItemNotes(ShoppingItem item) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(item.name),
-        content: Text(item.notes ?? ''),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.translate('close')),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  void _showAddItemDialog() {
-    final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController();
-    final _quantityController = TextEditingController(text: '1');
-    final _categoryController = TextEditingController();
-    final _notesController = TextEditingController();
+
+  Future<void> _showEditDialog(ShoppingService shoppingService, ShoppingItem item) async {
+    _itemController.text = item.name;
+    _quantityController.text = item.quantity.toString();
+    _selectedCategory = item.category;
+    _notesController.text = item.notes ?? '';
     
-    showDialog(
+    await _showItemDialog(
+      title: 'Edit Item',
+      onSave: (shoppingService) async {
+        if (_itemController.text.trim().isEmpty) return;
+        
+        final updatedItem = item.copyWith(
+          name: _itemController.text.trim(),
+          quantity: int.tryParse(_quantityController.text) ?? 1,
+          category: _selectedCategory,
+          notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+        );
+        
+        await shoppingService.updateItem(updatedItem);
+      },
+    );
+  }
+
+  Future<void> _showItemDialog({
+    required String title,
+    required Function(ShoppingService) onSave,
+  }) async {
+    return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.translate('add_item')),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.translate('item_name'),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.translate('name_required');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                Row(
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(title),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _quantityController,
-                        decoration: InputDecoration(
-                          labelText: AppLocalizations.of(context)!.translate('quantity'),
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppLocalizations.of(context)!.translate('quantity_required');
-                          }
-                          final quantity = int.tryParse(value);
-                          if (quantity == null || quantity < 1) {
-                            return AppLocalizations.of(context)!.translate('quantity_invalid');
-                          }
-                          return null;
-                        },
+                    TextField(
+                      controller: _itemController,
+                      decoration: const InputDecoration(
+                        labelText: 'Item name',
+                        border: OutlineInputBorder(),
                       ),
+                      autofocus: true,
                     ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      flex: 3,
-                      child: TextFormField(
-                        controller: _categoryController,
-                        decoration: InputDecoration(
-                          labelText: '${AppLocalizations.of(context)!.translate('category')} (${AppLocalizations.of(context)!.translate('optional')})',
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: _quantityController,
+                            decoration: const InputDecoration(
+                              labelText: 'Qty',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
                         ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 3,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedCategory,
+                            decoration: const InputDecoration(
+                              labelText: 'Category',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              'Fruits & Vegetables',
+                              'Dairy & Eggs',
+                              'Meat & Fish',
+                              'Bakery',
+                              'Beverages',
+                              'Snacks',
+                              'Household',
+                              'Other',
+                            ].map((String category) {
+                              return DropdownMenuItem<String>(
+                                value: category,
+                                child: Text(category),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedCategory = value;
+                              });
+                            },
+                            hint: const Text('Select category'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes (optional)',
+                        border: OutlineInputBorder(),
                       ),
+                      maxLines: 2,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _notesController,
-                  decoration: InputDecoration(
-                    labelText: '${AppLocalizations.of(context)!.translate('notes')} (${AppLocalizations.of(context)!.translate('optional')})',
-                  ),
-                  maxLines: 3,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final shoppingService = Provider.of<ShoppingService>(context, listen: false);
+                    await onSave(shoppingService);
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('SAVE'),
                 ),
               ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.translate('cancel')),
-          ),
-          TextButton(
-            onPressed: () {
-              if (_formKey.currentState?.validate() ?? false) {
-                final newItem = ShoppingItem(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: _nameController.text,
-                  quantity: int.parse(_quantityController.text),
-                  category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
-                  notes: _notesController.text.isNotEmpty ? _notesController.text : null,
-                  isBought: false,
-                );
-                
-                _databaseService.addShoppingItem(newItem);
-                Navigator.pop(context);
-                setState(() {});
-              }
-            },
-            child: Text(AppLocalizations.of(context)!.translate('add')),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  Future<void> _showClearAllDialog() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear All Items'),
+          content: const Text('Are you sure you want to remove all items from your shopping list?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () {
+                final shoppingService = Provider.of<ShoppingService>(context, listen: false);
+                shoppingService.clearAll();
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('CLEAR ALL'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleBoughtStatus(ShoppingService shoppingService, String id) async {
+    await shoppingService.toggleBoughtStatus(id);
+  }
+
+  Future<void> _deleteItem(ShoppingService shoppingService, String id) async {
+    await shoppingService.deleteItem(id);
+    
+    if (!mounted) return;
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Item removed'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _clearForm() {
+    _itemController.clear();
+    _quantityController.text = '1';
+    _selectedCategory = null;
+    _notesController.clear();
   }
 }

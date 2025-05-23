@@ -6,7 +6,7 @@ import '../../../core/utils/app_localizations.dart';
 // Import screen widgets
 import '../tasks/tasks_screen.dart';
 import '../calendar/calendar_screen.dart';
-import '../shopping/shopping_screen.dart';
+import '../shopping/shopping_list_screen.dart';
 import '../profile/profile_screen.dart';
 
 // Helper function for debug logging
@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _screens = [
       const TasksScreen(),
       const CalendarScreen(),
-      const ShoppingScreen(),
+      const ShoppingListScreen(),
       const ProfileScreen(),
     ];
     _log('HomeScreen initialized with ${_screens.length} screens');
