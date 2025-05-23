@@ -15,6 +15,7 @@ import 'models/task.dart';
 import 'models/recurrence_rule.dart';
 import 'screens/main_screen.dart';
 import 'services/task_service.dart';
+import 'services/shopping_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -31,17 +32,14 @@ void main() async {
 
     // Initialize Hive with different paths for web and non-web
     if (kIsWeb) {
-      // For web, we don't need a path
       await Hive.initFlutter();
     } else {
-      // For mobile/desktop, use path_provider
       final appDocumentDir = await getApplicationDocumentsDirectory();
       await Hive.initFlutter(appDocumentDir.path);
     }
 
-    // Register Hive adapters using the new registration method
+    // Register Hive adapters
     Task.registerHiveAdapter();
-    // Register other adapters as needed
     Hive.registerAdapter(RecurrenceRuleAdapter());
     Hive.registerAdapter(RecurrenceFrequencyAdapter());
 
@@ -51,35 +49,30 @@ void main() async {
     // Initialize service locator which will set up all services
     await setupLocator();
 
-    if (kDebugMode) {
-      debugPrint('Hive and service locator initialized successfully');
-    }
+    // Get instances of services
+    final shoppingService = locator<ShoppingService>();
+    final taskService = locator<TaskService>();
+    
+    // Initialize services
+    await shoppingService.init();
+    await taskService.initialize();
 
-    print('Initialization complete, running app...');
-
-    // Get saved theme mode
+    // Initialize theme
     final prefs = await SharedPreferences.getInstance();
     final isDarkMode = prefs.getBool('isDarkMode') ?? false;
-
-    // Get the TaskService instance from the service locator and initialize it
-    final taskService = getIt<TaskService>();
-    await taskService.initialize();
+    final themeProvider = ThemeProvider(isDarkMode: isDarkMode);
 
     runApp(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider<ThemeProvider>(
-            create: (_) => ThemeProvider(isDarkMode: isDarkMode),
-          ),
-          ChangeNotifierProvider<TaskService>(
-            create: (_) => taskService,
-          ),
+          ChangeNotifierProvider.value(value: themeProvider),
+          ChangeNotifierProvider.value(value: shoppingService),
+          ChangeNotifierProvider.value(value: taskService),
         ],
         child: const MyApp(),
       ),
     );
   } catch (e, stackTrace) {
-    // Handle any initialization errors
     print('Error during initialization: $e');
     print('Stack trace: $stackTrace');
 
@@ -121,7 +114,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
+      builder: (context, themeProvider, _) {
         return MaterialApp(
           title: 'Fam Planner',
           debugShowCheckedModeBanner: true,
@@ -139,13 +132,11 @@ class MyApp extends StatelessWidget {
             Locale('en', ''), // English
           ],
           localeResolutionCallback: (locale, supportedLocales) {
-            // Check if the current device locale is supported
             for (var supportedLocale in supportedLocales) {
               if (supportedLocale.languageCode == locale?.languageCode) {
                 return supportedLocale;
               }
             }
-            // If not supported, use the first one (Slovenian) as default
             return supportedLocales.first;
           },
           home: const MainScreen(),

@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:fam_planner/core/service_locator.dart';
+import 'package:fam_planner/screens/shopping_screen.dart';
+import 'package:fam_planner/services/shopping_service.dart';
 
 class ShoppingListScreen extends StatelessWidget {
   const ShoppingListScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shopping List'),
-      ),
-      body: const Center(
-        child: Text('Shopping List - Coming Soon!'),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Add shopping item
-        },
-        child: const Icon(Icons.add),
-      ),
+    return ChangeNotifierProvider<ShoppingService>.value(
+      value: locator<ShoppingService>(),
+      child: const ShoppingScreen(),
     );
   }
 }
