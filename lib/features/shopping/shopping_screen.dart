@@ -192,103 +192,142 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
     required String title,
     required Function(ShoppingService) onSave,
   }) async {
+    final categories = [
+      'Fruits & Veg',
+      'Dairy & Eggs',
+      'Meat & Fish',
+      'Bakery',
+      'Beverages',
+      'Snacks',
+      'Household',
+      'Other',
+    ];
+
     return showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(title),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: _itemController,
-                      decoration: const InputDecoration(
-                        labelText: 'Item name',
-                        border: OutlineInputBorder(),
-                      ),
-                      autofocus: true,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+        return Dialog(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: _quantityController,
-                            decoration: const InputDecoration(
-                              labelText: 'Qty',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedCategory,
-                            decoration: const InputDecoration(
-                              labelText: 'Category',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              'Fruits & Vegetables',
-                              'Dairy & Eggs',
-                              'Meat & Fish',
-                              'Bakery',
-                              'Beverages',
-                              'Snacks',
-                              'Household',
-                              'Other',
-                            ].map((String category) {
-                              return DropdownMenuItem<String>(
-                                value: category,
-                                child: Text(category),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedCategory = value;
-                              });
-                            },
-                            hint: const Text('Select category'),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _itemController,
+                          decoration: const InputDecoration(
+                            labelText: 'Item name',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           ),
+                          autofocus: true,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 80,
+                              child: TextField(
+                                controller: _quantityController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Qty',
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Category',
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedCategory,
+                                    isExpanded: true,
+                                    hint: const Text(
+                                      'Select category',
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                    items: categories.map((String category) {
+                                      return DropdownMenuItem<String>(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        _selectedCategory = newValue;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _notesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Notes (optional)',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          ),
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('CANCEL'),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final shoppingService = Provider.of<ShoppingService>(
+                                  context,
+                                  listen: false,
+                                );
+                                await onSave(shoppingService);
+                                if (mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                              child: const Text('SAVE'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (optional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 2,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('CANCEL'),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final shoppingService = Provider.of<ShoppingService>(context, listen: false);
-                    await onSave(shoppingService);
-                    if (mounted) {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  child: const Text('SAVE'),
-                ),
-              ],
-            );
-          },
+                  ),
+                );
+              },
+            ),
+          ),
         );
       },
     );
