@@ -246,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
   
   Widget _buildStatistics() {
-    return FutureBuilder<Map<String, int>>(
+    return FutureBuilder<Map<String, dynamic>>(
       future: _getStatistics(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -258,49 +258,209 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'completed': 0,
           'shopping': 0,
           'bought': 0,
+          'pending': 0,
+          'overdue': 0,
+          'members': 0,
+          'categories': 0,
         };
+        
+        final completionRate = stats['tasks'] > 0 
+            ? (stats['completed'] / stats['tasks'] * 100).toStringAsFixed(1)
+            : '0.0';
+            
+        final shoppingProgress = stats['shopping'] > 0
+            ? (stats['bought'] / stats['shopping'] * 100).toStringAsFixed(1)
+            : '0.0';
         
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              AppLocalizations.of(context)!.translate('statistics'),
-              style: const TextStyle(
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.translate('statistics'),
+                  style: const TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Updated: ${DateTime.now().toString().substring(0, 10)}',
+                  style: TextStyle(
+                    fontSize: 12.0,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16.0),
+            // First row - Task Statistics
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.task, color: _selectedColor),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          'Task Overview',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStatCard(
+                          '${stats['tasks']}',
+                          'Total',
+                          Icons.task,
+                        ),
+                        _buildStatCard(
+                          '${stats['completed']}',
+                          'Completed',
+                          Icons.check_circle,
+                        ),
+                        _buildStatCard(
+                          '${stats['pending']}',
+                          'Pending',
+                          Icons.pending_actions,
+                        ),
+                        _buildStatCard(
+                          '${stats['overdue']}',
+                          'Overdue',
+                          Icons.warning_amber_rounded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    LinearProgressIndicator(
+                      value: stats['tasks'] > 0 ? stats['completed'] / stats['tasks'] : 0,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(_selectedColor),
+                      minHeight: 10.0,
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Completion Rate: $completionRate%',
+                      style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+                      textAlign: TextAlign.end,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatCard(
-                  '${stats['tasks']}',
-                  AppLocalizations.of(context)!.translate('total_tasks'),
-                  Icons.task,
+            // Second row - Shopping Statistics
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.shopping_cart, color: _selectedColor),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          'Shopping Overview',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStatCard(
+                          '${stats['shopping']}',
+                          'Total Items',
+                          Icons.shopping_basket,
+                        ),
+                        _buildStatCard(
+                          '${stats['bought']}',
+                          'Bought',
+                          Icons.check_circle_outline,
+                        ),
+                        _buildStatCard(
+                          '${stats['categories']}',
+                          'Categories',
+                          Icons.category,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    LinearProgressIndicator(
+                      value: stats['shopping'] > 0 ? stats['bought'] / stats['shopping'] : 0,
+                      backgroundColor: Colors.grey[200],
+                      valueColor: AlwaysStoppedAnimation<Color>(_selectedColor),
+                      minHeight: 10.0,
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Shopping Progress: $shoppingProgress%',
+                      style: const TextStyle(fontSize: 12.0, color: Colors.grey),
+                      textAlign: TextAlign.end,
+                    ),
+                  ],
                 ),
-                _buildStatCard(
-                  '${stats['completed']}',
-                  AppLocalizations.of(context)!.translate('completed'),
-                  Icons.check_circle,
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 16.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatCard(
-                  '${stats['shopping']}',
-                  AppLocalizations.of(context)!.translate('shopping_items'),
-                  Icons.shopping_cart,
+            // Third row - Household Info
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.people, color: _selectedColor),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          'Household',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatCard(
+                          '${stats['members']}',
+                          'Members',
+                          Icons.person,
+                        ),
+                        _buildStatCard(
+                          '${stats['activeMembers']}',
+                          'Active',
+                          Icons.person_outline,
+                        ),
+                        _buildStatCard(
+                          '${stats['tasksAssigned']}',
+                          'Tasks Assigned',
+                          Icons.assignment_turned_in,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                _buildStatCard(
-                  '${stats['bought']}',
-                  AppLocalizations.of(context)!.translate('bought'),
-                  Icons.check_circle_outline,
-                ),
-              ],
+              ),
             ),
           ],
         );
@@ -378,16 +538,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
   
-  Future<Map<String, int>> _getStatistics() async {
-    final tasks = await _databaseService.getTasks();
-    final shoppingItems = await _databaseService.getShoppingItems();
-    
-    return {
-      'tasks': tasks.length,
-      'completed': tasks.where((task) => task.isDone).length,
-      'shopping': shoppingItems.length,
-      'bought': shoppingItems.where((item) => item.isBought).length,
-    };
+  Future<Map<String, dynamic>> _getStatistics() async {
+    try {
+      final tasks = await _databaseService.getTasks();
+      final shoppingItems = await _databaseService.getShoppingItems();
+      final members = await _databaseService.getHouseholdMembers();
+      
+      final now = DateTime.now();
+      final completedTasks = tasks.where((task) => task.isDone).toList();
+      
+      final pendingTasks = tasks.where((task) {
+        if (task.isDone) return false;
+        return task.dueDate.isAfter(now);
+      }).toList();
+      
+      final overdueTasks = tasks.where((task) {
+        if (task.isDone) return false;
+        return task.dueDate.isBefore(now);
+      }).toList();
+      
+      // Get unique categories from shopping items
+      final categories = shoppingItems.map((item) => item.category).whereType<String>().toSet();
+      
+      // Count tasks assigned to members
+      final tasksAssigned = tasks.where((task) => task.assignedTo != null && task.assignedTo!.isNotEmpty).length;
+      
+      return {
+        'tasks': tasks.length,
+        'completed': completedTasks.length,
+        'pending': pendingTasks.length,
+        'overdue': overdueTasks.length,
+        'shopping': shoppingItems.length,
+        'bought': shoppingItems.where((item) => item.isBought).length,
+        'categories': categories.length,
+        'members': members.length,
+        'activeMembers': members.length, // All members are considered active for now
+        'tasksAssigned': tasksAssigned,
+      };
+    } catch (e) {
+      debugPrint('Error getting statistics: $e');
+      return {
+        'tasks': 0,
+        'completed': 0,
+        'pending': 0,
+        'overdue': 0,
+        'shopping': 0,
+        'bought': 0,
+        'categories': 0,
+        'members': 0,
+        'activeMembers': 0,
+        'tasksAssigned': 0,
+      };
+    }
   }
   
   Future<void> _saveProfile() async {
