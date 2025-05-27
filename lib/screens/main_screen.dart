@@ -5,7 +5,12 @@ import 'package:fam_planner/features/shopping/shopping_list_screen.dart';
 import 'package:fam_planner/features/profile/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  final Function(Locale)? onLanguageChanged;
+  
+  const MainScreen({
+    Key? key,
+    this.onLanguageChanged,
+  }) : super(key: key);
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -13,13 +18,20 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const TaskListScreen(),
-    const CalendarScreen(),
-    const ShoppingListScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const TaskListScreen(),
+      const CalendarScreen(),
+      const ShoppingListScreen(),
+      ProfileScreen(
+        onLanguageChanged: widget.onLanguageChanged,
+      ),
+    ];
+  }
 
   static const List<BottomNavigationBarItem> _bottomNavBarItems = [
     BottomNavigationBarItem(

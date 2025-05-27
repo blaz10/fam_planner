@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/utils/app_localizations.dart';
 import '../../../models/household_member.dart';
@@ -8,7 +9,12 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/theme_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final Function(Locale)? onLanguageChanged;
+  
+  const ProfileScreen({
+    super.key,
+    this.onLanguageChanged,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -21,11 +27,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   Color _selectedColor = Colors.blue;
+  String _selectedLanguage = 'en';
   
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadLanguagePreference();
+  }
+  
+  Future<void> _loadLanguagePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedLanguage = prefs.getString('language') ?? 'en';
+    });
   }
   
   Future<void> _loadProfile() async {
@@ -89,14 +104,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildEmailField(),
               const SizedBox(height: 16.0),
               _buildPhoneField(),
-              const SizedBox(height: 24.0),
+              const SizedBox(height: 16.0),
+              _buildLanguageSelector(),
+              const SizedBox(height: 16.0),
               _buildColorPicker(),
-              const SizedBox(height: 32.0),
+              const SizedBox(height: 24.0),
               _buildStatistics(),
-              const SizedBox(height: 32.0),
-              _buildLogoutButton(theme),
               const SizedBox(height: 24.0),
               _buildThemeToggle(themeProvider, theme),
+              const SizedBox(height: 24.0),
+              _buildLogoutButton(theme),
             ],
           ),
         ),
@@ -428,9 +445,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       children: [
                         Icon(Icons.people, color: _selectedColor),
-                        const SizedBox(width: 8.0),
+                        const SizedBox(width: 12.0),
                         Text(
-                          'Household',
+                          'Household Stats',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -444,16 +461,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildStatCard(
                           '${stats['members']}',
                           'Members',
-                          Icons.person,
+                          Icons.people,
                         ),
                         _buildStatCard(
-                          '${stats['activeMembers']}',
+                          '${stats['activeMembers'] ?? 0}',
                           'Active',
                           Icons.person_outline,
                         ),
                         _buildStatCard(
-                          '${stats['tasksAssigned']}',
-                          'Tasks Assigned',
+                          '${stats['tasksAssigned'] ?? 0}',
+                          'Tasks',
                           Icons.assignment_turned_in,
                         ),
                       ],
@@ -501,11 +518,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
   
+  Widget _buildLanguageSelector() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              child: Text(
+                AppLocalizations.of(context)!.translate('language'),
+                style: const TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Divider(height: 1.0),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('Select Language'),
+              trailing: DropdownButton<String>(
+                value: _selectedLanguage,
+                underline: const SizedBox(),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'en',
+                    child: Text('English'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'sl',
+                    child: Text('Slovenščina'),
+                  ),
+                ],
+                onChanged: (String? newValue) async {
+                  if (newValue != null && newValue != _selectedLanguage) {
+                    setState(() {
+                      _selectedLanguage = newValue;
+                    });
+                    
+                    // Save the preference
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('language', newValue);
+                    
+                    // Notify parent widget to update the app's locale
+                    final locale = Locale(newValue);
+                    if (widget.onLanguageChanged != null) {
+                      await widget.onLanguageChanged!(locale);
+                    }
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
   Widget _buildThemeToggle(ThemeProvider themeProvider, ThemeData theme) {
     return Card(
       child: SwitchListTile(
-        title: const Text('Dark Mode'),
-        subtitle: Text(themeProvider.isDarkMode ? 'On' : 'Off'),
+        title: Text(AppLocalizations.of(context)!.translate('dark_mode')),
+        subtitle: Text(themeProvider.isDarkMode 
+            ? AppLocalizations.of(context)!.translate('on')
+            : AppLocalizations.of(context)!.translate('off')),
         value: themeProvider.isDarkMode,
         onChanged: (value) {
           themeProvider.toggleTheme();
