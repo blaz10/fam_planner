@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get_it/get_it.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +27,9 @@ void main() async {
   print('=== APP STARTING ===');
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Google Fonts
+  GoogleFonts.config.allowRuntimeFetching = true;
+  
   if (kDebugMode) {
     debugPrint('Initializing Hive and service locator...');
   }
@@ -171,13 +175,20 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Locale? _locale;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSavedLocale();
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _loadSavedLocale() async {
@@ -254,20 +265,19 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
+          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           locale: _locale,
-          supportedLocales: const [
-            Locale('en', 'US'),
-            Locale('sl', 'SI'),
-          ],
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
+          supportedLocales: const [
+            Locale('en', ''),
+            Locale('sl', ''),
+          ],
           localeResolutionCallback: (deviceLocale, supportedLocales) {
-            // Check if the current device locale is supported
             if (deviceLocale != null) {
               for (var supportedLocale in supportedLocales) {
                 if (supportedLocale.languageCode == deviceLocale.languageCode) {
@@ -275,7 +285,6 @@ class _MyAppState extends State<MyApp> {
                 }
               }
             }
-            // If not supported, use the first locale (Slovenian) as default
             return supportedLocales.first;
           },
           home: _locale == null 
